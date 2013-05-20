@@ -39,41 +39,15 @@ public class UsbHost extends Activity implements OnClickListener{
 	private static boolean isPermitted = false;
 	private static boolean isConnected = false;
 	
-	private static final int REQ_VIDCONSTREAM_INTERFACE = 0x01;
-	private static final int GET_INFO_REQUEST = 0x86;
-	private static final int PU_BRIGHTNESS_CONTROL = 0x0200;
+	private static final int BITS_PER_PIXEL = 16;
 	
-	private static final int GET_CUR = 0x81;
-	private static final int GET_MIN = 0x82;
-	private static final int GET_MAX = 0x83;
-	private static final int GET_RES = 0x84;
-	private static final int GET_INFO = 0x86;
-	private static final int GET_DEF = 0x87;
-	private static final int SET_CUR = 0x01;
+	private static final int IMAGE_WIDTH = 160;
+	private static final int IMAGE_HEIGHT = 120;
+	private static final long IMAGE_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * BITS_PER_PIXEL;
 	
-	private static final int SET_INTERFACE = 0x0b;
-	private static final int OPERATIONAL = 0x0001;
-	private static final int ZERO_BANDWIDTH	= 0x0000;
-	
-	private static final int VIDEO_STREAMING_INTERFACE = 0x0001;
-	
-	private static final int PROBE_CONTROL = 0x0100;
-	private static final int COMMIT_CONTROL = 0x0200;
-	private static final int STILL_IMAGE_TRIGGER_CONTROL = 0x0500;
-	private static final int STILL_PROBE_CONTROL = 0x0300;
-	private static final int STILL_COMMIT_CONTROL = 0x0400;
-	
-	private static final int CAMERA_SENSOR = 0x0100;
-	private static final int OUTPUT_TERMINAL = 0x0200;
-	private static final int PROCESSING_UNIT = 0x0300;
-	private static final int EXTENSION_UNIT = 0x0400;
-	
-	private static final int CLASS_REQUEST_IN = 0xa1;
-	private static final int CLASS_REQUEST_OUT = 0x21;
-	private static final int STANDARD_REQUEST_OUT = 0x01;
-	
-	
-	private static final int VIDEO_STREAMING_INTERFFACE = 0x0001;
+	private static final int PAYLOAD_SIZE = 16384;
+	private static final int PAYLOAD_COUNT = 3;
+	private static final int FRAME_BUFFER_SIZE = PAYLOAD_SIZE * PAYLOAD_COUNT;
 	
 	private File imageFile = null;
 	private FileOutputStream osr = null;
@@ -98,7 +72,7 @@ public class UsbHost extends Activity implements OnClickListener{
 	UsbEndpoint mBulkEpIn;
 	UsbRequest mUsbRequest;
 	
-	UvcControls mUvcControls = new UvcControls();
+	UvcControls mUvcControls;;
 	
 	String mDeviceName;
 	
@@ -109,7 +83,7 @@ public class UsbHost extends Activity implements OnClickListener{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_usb_host);
 		
-		imgBuf = ByteBuffer.allocate(622592);
+		imgBuf = ByteBuffer.allocate(38400);
 		
 		bScan = (Button) findViewById(R.id.scan);
 		bConnect = (Button) findViewById(R.id.connect);
@@ -225,6 +199,7 @@ public class UsbHost extends Activity implements OnClickListener{
 				mDeviceConnection = mManager.openDevice(mDevice);
 				if(mDeviceConnection != null) {
 					isConnected = mDeviceConnection.claimInterface(mStreamingIntf, false);
+					mUvcControls = new UvcControls(mDeviceConnection);
 				}
 				else {
 					status.setText("Failed connecting to device:\n" + mDeviceName);
@@ -249,119 +224,54 @@ public class UsbHost extends Activity implements OnClickListener{
 		mUsbRequest = new UsbRequest();
 		
 		if(isConnected) {
-			mUsbRequest.initialize(mDeviceConnection, mBulkEpIn);
-			
-			mUvcControls.setControls(getStreamingControls());
-			Log.v(TAG, "###########");
-			Log.v(TAG, mUvcControls.formattedValues());
-			
-//			mUvcControls.setFormatIndex((short) 2);
-			setStreamingControls(mUvcControls.getControls());
-			Log.v(TAG, "###########");
-			Log.v(TAG, mUvcControls.formattedValues());
-			
-			commitStreamingControls(mUvcControls.getControls());
-			startStreaming();
-			
-			getStillControls(info);
-			for(int i = 0; i < info.length; i++) {
-				Log.v(TAG, "still image controls : " + info[i]);
-			}
-			//info[0] = 0x02;
-			setStillControls(info);
-			for(int i = 0; i < info.length; i++) {
-				Log.v(TAG, "still image controls : " + info[i]);
-			}
-			info[0] = 0x02;
-			commitStillControls(info);
+			initUvc();
 		}
 	}	
 	
-	private void setStreamingControls(byte[] controls) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_OUT, SET_CUR, PROBE_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > -1) {
-			Log.v(TAG, "probe control set");
-		}
-		else {
-			Log.v(TAG, "probe control set failed");
-		}
-	}
-	
-	private byte[] getStreamingControls() {
-		byte[] controls = new byte[48];
+	private void initUvc() {
 		
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_IN, GET_CUR, PROBE_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > - 1) {
-			Log.v(TAG, "probe control get");
-		}
-		else {
-			Log.v(TAG, "probe control get failed");
+		if(!mUvcControls.probeControl(UvcConstants.GET_CUR)) {
+			Log.e(TAG, "error in probe control [GET_CUR]");
 		}
 		
-		return controls;
-	}
-	
-	private void commitStreamingControls(byte[] controls) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_OUT, SET_CUR, COMMIT_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > -1) {
-			Log.v(TAG, "commit control set");
+		Log.v(TAG, "[1]control values = " + mUvcControls.formattedValues());
+		
+		mUvcControls.setDefault();
+		
+		mUvcControls.setFrameIndex(5);
+		
+		if(!mUvcControls.probeControl(UvcConstants.SET_CUR)) {
+			Log.e(TAG, "error in probe control [SET_CUR]");
 		}
-		else {
-			Log.v(TAG, "commit control set failed");
+		
+		if(!mUvcControls.probeControl(UvcConstants.GET_CUR)) {
+			Log.e(TAG, "error in probe control [GET_CUR]");
 		}
-	}
-	
-	private void startStreaming() {
-		if(mDeviceConnection.controlTransfer(STANDARD_REQUEST_OUT, SET_INTERFACE, ZERO_BANDWIDTH, VIDEO_STREAMING_INTERFACE, null, 0, 0) > -1) {
-			Log.v(TAG, "start streaming");
+		
+		Log.v(TAG, "[2]control values = " + mUvcControls.formattedValues());
+		
+		if(!mUvcControls.commitControl(UvcConstants.SET_CUR)) {
+			Log.e(TAG, "error in commit control");
 		}
-		else {
-			Log.v(TAG, "start streaming failed");
-		}
-	}
-	
-	private void getStillControls(byte[] controls) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_IN, GET_CUR, STILL_PROBE_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > -1) {
-			Log.v(TAG, "still image controls get");
-		}
-		else {
-			Log.v(TAG, "still image controls failed");
-		}
-	}
-	
-	private void setStillControls(byte[] controls) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_OUT, SET_CUR, STILL_PROBE_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > -1) {
-			Log.v(TAG, "still image controls set");
-		}
-		else {
-			Log.v(TAG, "still image controls failed");
-		}
-	}
-	
-	private void commitStillControls(byte[] controls) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_OUT, SET_CUR, STILL_COMMIT_CONTROL, VIDEO_STREAMING_INTERFACE, controls, controls.length, 0) > -1) {
-			Log.v(TAG, "still image controls commit");
-		}
-		else {
-			Log.v(TAG, "still image controls failed");
-		}
-	}
-	
-	private void stillImageTrigger(byte[] trigger) {
-		if(mDeviceConnection.controlTransfer(CLASS_REQUEST_OUT, SET_CUR, STILL_IMAGE_TRIGGER_CONTROL, VIDEO_STREAMING_INTERFACE, trigger, trigger.length, 0) > -1) {
-			Log.v(TAG, "still trigger command set");
-		}
-		else {
-			Log.v(TAG, "still trigger command failed");
+		
+		if(!mUvcControls.startStreaming()) {
+			Log.e(TAG, "error starting streaming");
 		}
 	}
 	
 	private void captureFrame() throws IOException {
 		int cnt = 0;
+		int old_cnt = 0;
 		int hdr_ctr = 0;
 		int packet_ctr = 0;
 		int stray_ctr = 0;
 		byte[] trigger = new byte[1];
+		int errorCode = 0;
 		trigger[0] = 0x01;	
 		
 		int[] arr = new int[500];
+		
+		String strace = "";
 	
 		//stillImageTrigger(trigger);
 		
@@ -374,15 +284,27 @@ public class UsbHost extends Activity implements OnClickListener{
 //			Log.v(TAG, "cnt["+ i + "] = " + arr[i]);
 //		}
 		
-		while(mDeviceConnection.bulkTransfer(mBulkEpIn, epBuf, 16384, 0) == 16384);
+		//while(mDeviceConnection.bulkTransfer(mBulkEpIn, epBuf, 16384, 0) != 8204);
 		
-		for(long i = 0; i < 38; i++) {
+		for(long i = 0; i < 100; i++) {
+			cnt = mDeviceConnection.bulkTransfer(mBulkEpIn, epBuf, PAYLOAD_SIZE, 0);
+			//imgBuf.put(epBuf, 0, cnt);
+		}
+		
+		while(mDeviceConnection.bulkTransfer(mBulkEpIn, epBuf, 16384, 0) == PAYLOAD_SIZE);
+		
+		for(int i = 0; i < 3; i++) {
 			cnt = mDeviceConnection.bulkTransfer(mBulkEpIn, epBuf, 16384, 0);
 			if(i == 0)
-				imgBuf.put(epBuf, 12, cnt - 12);
+				imgBuf.put(epBuf, 12, cnt);
 			else
 				imgBuf.put(epBuf, 0, cnt);
 		}
+		
+		Log.v(TAG, "number of bytes acquired = " + imgBuf.position());
+		
+		errorCode = mUvcControls.getErrorCode();
+		Log.v(TAG, "error code = " + errorCode);
 		
 		if(imageFile == null) {
 			imageFile = new File("/storage/extSdCard/yuv_image.yuv");
