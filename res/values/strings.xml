@@ -7,6 +7,6 @@
     <string name="scan">Scan</string>
     <string name="connect">Connect</string>
     <string name="perform_scan">Perform a device scan</string>
-    <string name="capture">Capture Frame</string>
+    <string name="capture">Start Preview</string>
 
 </resources>

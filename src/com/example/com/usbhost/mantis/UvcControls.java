@@ -234,6 +234,18 @@ public class UvcControls {
 		}
 	}
 	
+	public int getScanMode() {
+		byte[] mode = new byte[1];
+		
+		if(mDeviceConnection.controlTransfer(UvcConstants.CLASS_REQUEST_IN, UvcConstants.GET_CUR, UvcConstants.SCANNING_MODE_CONTROL, 
+				UvcConstants.CAMERA_SENSOR, mode, mode.length, 0) > -1) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+	
 	public boolean startStreaming() {
 		if(mDeviceConnection.controlTransfer(UvcConstants.STANDARD_REQUEST_OUT, UvcConstants.SET_INTERFACE, UvcConstants.OPERATIONAL, 
 				UvcConstants.VIDEO_STREAMING_INTERFACE, null, 0, 0) > -1) {

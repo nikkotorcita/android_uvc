@@ -14,18 +14,23 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-        android:layout_marginLeft="28dp"
-        android:layout_marginTop="42dp"
         android:text="@string/scan" />
+
+    <Button
+        android:id="@+id/capture_frame"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/deviceName"
+        android:layout_alignParentRight="true"
+        android:text="@string/capture" />
 
     <Button
         android:id="@+id/connect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/scan"
-        android:layout_alignBottom="@+id/scan"
-        android:layout_alignParentRight="true"
-        android:layout_marginRight="50dp"
+        android:layout_above="@+id/deviceName"
+        android:layout_alignLeft="@+id/deviceName"
+        android:layout_marginLeft="20dp"
         android:text="@string/connect" />
 
     <TextView
@@ -33,18 +38,19 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/scan"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="66dp"
+        android:layout_toRightOf="@+id/scan"
         android:text="@string/perform_scan"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
-    <Button
-        android:id="@+id/capture_frame"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="106dp"
-        android:text="@string/capture" />
+    <FrameLayout
+        android:id="@+id/camera_preview"
+        android:layout_width="250dp"
+        android:layout_height="400dp"
+        android:layout_alignLeft="@+id/scan"
+        android:layout_alignRight="@+id/capture_frame"
+        android:layout_below="@id/deviceName"
+        android:layout_centerVertical="true" >
+
+    </FrameLayout>
 
 </RelativeLayout>

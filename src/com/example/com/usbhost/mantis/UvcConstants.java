@@ -23,10 +23,12 @@ package com.example.com.usbhost.mantis;
 	public static final int STILL_PROBE_CONTROL = 0x0300;
 	public static final int STILL_COMMIT_CONTROL = 0x0400;
 	
+	public static final int SCANNING_MODE_CONTROL = 0x0100;
+	
 	public static final int CAMERA_SENSOR = 0x0100;
 	public static final int OUTPUT_TERMINAL = 0x0200;
 	public static final int PROCESSING_UNIT = 0x0300;
-	public static final int EXTENSION_UNIT = 0x0400;
+	public static final int EXTENSION_UNIT = 0x0400; 
 	
 	public static final int CLASS_REQUEST_IN = 0xa1;
 	public static final int CLASS_REQUEST_OUT = 0x21;
